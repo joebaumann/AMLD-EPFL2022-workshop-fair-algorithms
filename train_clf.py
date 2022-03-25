@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import OneHotEncoder
+import warnings
 
 
 
@@ -28,9 +29,9 @@ def preprocessing_german(df):
     categorical_columns = ['status', 'credit_history', 'purpose', 'savings', 'employment', 'other_debtors', 'property', 'age', 'installment_plans', 'housing', 'skill_level', 'telephone', 'foreign_worker']
     enc = OneHotEncoder(handle_unknown='ignore', drop='first')
     enc_df = pd.DataFrame(enc.fit_transform(df[categorical_columns]).toarray())
-    df = df.join(enc_df)
-    df = df.drop(columns=categorical_columns)
-    return df
+    df_one_hot_encoded = df.join(enc_df)
+    df_one_hot_encoded = df_one_hot_encoded.drop(columns=categorical_columns)
+    return df, df_one_hot_encoded
 
 def preprocessing_credit_lending(df):
 
@@ -74,16 +75,16 @@ def preprocessing_credit_lending(df):
     df['AgeBin'] = pd.to_numeric(df['AgeBin'])
     df.loc[(df['AgeBin'] == 6) , 'AgeBin'] = 5
 
-    return df
+    return df, df
 
 def preprocessing_algorithmic_hiring(df):
     # one hot encoding
     categorical_columns = ["workclass-previous-job", "education", "race","native-country"]
     enc = OneHotEncoder(handle_unknown='ignore', drop='first')
     enc_df = pd.DataFrame(enc.fit_transform(df[categorical_columns]).toarray())
-    df = df.join(enc_df)
-    df = df.drop(columns=categorical_columns)
-    return df
+    df_one_hot_encoded = df.join(enc_df)
+    df_one_hot_encoded = df_one_hot_encoded.drop(columns=categorical_columns)
+    return df, df_one_hot_encoded
 
 
 # Datasets
@@ -121,105 +122,110 @@ algorithmic_hiring = {
 
 def train(dataset_info):
 
-    filename, target = dataset_info['filename'], dataset_info['target']
+    with warnings.catch_warnings():
+        # ignore all caught warnings
+        warnings.filterwarnings("ignore")
+        # execute code that will generate warnings
+            
+        filename, target = dataset_info['filename'], dataset_info['target']
 
-    preprocessing = dataset_info["preprocessing_fct"]
+        preprocessing = dataset_info["preprocessing_fct"]
 
-    df = preprocessing(pd.read_csv('data/' + filename))
+        df_original, df = preprocessing(pd.read_csv('data/' + filename))
 
-    y = df[target]
-    #y = y.replace(to_replace=2, value=0, inplace=False)
-    X = df.drop([target], axis=1)
+        y = df[target]
+        #y = y.replace(to_replace=2, value=0, inplace=False)
+        X = df.drop([target], axis=1)
 
-    """
+        """
 
-    number_of_folds=5
+        number_of_folds=5
 
-    # Split data into training/holdout sets
-    kf = KFold(n_splits=number_of_folds, shuffle=True, random_state=0)
-    kf.get_n_splits(X)
+        # Split data into training/holdout sets
+        kf = KFold(n_splits=number_of_folds, shuffle=True, random_state=0)
+        kf.get_n_splits(X)
 
-    # Keep track of the data for the folds
-    folds = []
+        # Keep track of the data for the folds
+        folds = []
 
-    # Iterate over folds, using k-1 folds for training
-    # and the k-th fold for validation
-    for train_index, test_index in kf.split(X):
-        # Training data
-        X_train = X.iloc[train_index]
-        y_train = y[train_index]
-        
-        # Holdout data
-        X_test = X.iloc[test_index]
-        y_test = y[test_index]
-        
-        
-        # numerical=dataset_info['numerical_attributes']
+        # Iterate over folds, using k-1 folds for training
+        # and the k-th fold for validation
+        for train_index, test_index in kf.split(X):
+            # Training data
+            X_train = X.iloc[train_index]
+            y_train = y[train_index]
+            
+            # Holdout data
+            X_test = X.iloc[test_index]
+            y_test = y[test_index]
+            
+            
+            # numerical=dataset_info['numerical_attributes']
 
-        # #scale data
-        # scaler = StandardScaler()
+            # #scale data
+            # scaler = StandardScaler()
 
-        # scaler.fit(X_train[numerical])
-        
-        # X_train[numerical] = scaler.transform(X_train[numerical])
-        # X_test[numerical] = scaler.transform(X_test[numerical])
+            # scaler.fit(X_train[numerical])
+            
+            # X_train[numerical] = scaler.transform(X_train[numerical])
+            # X_test[numerical] = scaler.transform(X_test[numerical])
 
 
+            A_train = X_train[dataset_info['sensitive_attribute']]
+            A_test = X_test[dataset_info['sensitive_attribute']]
+
+            fold = {
+                'X_train': X_train,
+                'y_train': y_train,
+                'X_test': X_test,
+                'y_test': y_test,
+                'A_train': A_train,
+                'A_test': A_test
+            }
+
+            folds.append(fold)
+
+        fold = folds[0]
+        X_train, X_test, y_train, y_test, A_train, A_test = fold['X_train'], fold['X_test'], fold['y_train'], fold['y_test'], fold['A_train'], fold['A_test']
+        """
+
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42)
         A_train = X_train[dataset_info['sensitive_attribute']]
         A_test = X_test[dataset_info['sensitive_attribute']]
 
-        fold = {
-            'X_train': X_train,
-            'y_train': y_train,
-            'X_test': X_test,
-            'y_test': y_test,
-            'A_train': A_train,
-            'A_test': A_test
-        }
+        clf = LogisticRegression(max_iter=1000, random_state=0).fit(X_train, y_train)
+        scores = clf.predict_proba(X_train)
 
-        folds.append(fold)
+        #filename_model = 'model.sav'
+        #filename_scores = 'scores.sav'
+        #pickle.dump(clf, open(filename_model, 'wb'))
+        #pickle.dump(scores, open(filename_scores, 'wb'))
 
-    fold = folds[0]
-    X_train, X_test, y_train, y_test, A_train, A_test = fold['X_train'], fold['X_test'], fold['y_train'], fold['y_test'], fold['A_train'], fold['A_test']
-    """
+        print("The model has been trained.")
 
+        print('Accuracy:', clf.score(X_test, y_test))
+        predictions = clf.predict(X_test)
+        print("Accuracy:", accuracy_score(y_true = y_test, y_pred = predictions))
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42)
-    A_train = X_train[dataset_info['sensitive_attribute']]
-    A_test = X_test[dataset_info['sensitive_attribute']]
-
-    clf = LogisticRegression(max_iter=1000, random_state=0).fit(X_train, y_train)
-    scores = clf.predict_proba(X_train)
-
-    #filename_model = 'model.sav'
-    #filename_scores = 'scores.sav'
-    #pickle.dump(clf, open(filename_model, 'wb'))
-    #pickle.dump(scores, open(filename_scores, 'wb'))
-
-    print("The model has been trained.")
-
-    print('Accuracy:', clf.score(X_test, y_test))
-    predictions = clf.predict(X_test)
-    print("Accuracy:", accuracy_score(y_true = y_test, y_pred = predictions))
-
-    scores = np.array([score[1] for score in scores])
-    y = y_train
-    sensitive_attribute = A_train
+        scores = np.array([score[1] for score in scores])
+        y = y_train
+        sensitive_attribute = A_train
 
 
-    ix_A = sensitive_attribute == 0
-    ix_B = sensitive_attribute == 1
+        ix_A = sensitive_attribute == 0
+        ix_B = sensitive_attribute == 1
 
 
 
-    scores_json = {'scores_group1': scores[ix_A].tolist(), 'scores_group2': scores[ix_B].tolist()}
-    json.dump(scores_json, open("output/" + dataset_info["tag"] + '/scores.json', 'w'))
-    y_json = {'y_group1': y[ix_A].tolist(), 'y_group2': y[ix_B].tolist()}
-    json.dump(y_json, open("output/" + dataset_info["tag"] + '/y.json', 'w'))
+        scores_json = {'scores_group1': scores[ix_A].tolist(), 'scores_group2': scores[ix_B].tolist()}
+        json.dump(scores_json, open("output/" + dataset_info["tag"] + '/scores.json', 'w'))
+        y_json = {'y_group1': y[ix_A].tolist(), 'y_group2': y[ix_B].tolist()}
+        json.dump(y_json, open("output/" + dataset_info["tag"] + '/y.json', 'w'))
 
-    print("Scores and y are saved in json format to output/" + dataset_info["tag"])
+        print("Scores and y are saved in json format to output/" + dataset_info["tag"])
 
-    return df, scores_json, y_json
+        return df_original, scores_json, y_json
 
 
 if __name__ == "__main__":
