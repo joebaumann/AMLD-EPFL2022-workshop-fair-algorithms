@@ -220,9 +220,9 @@ def train(dataset_info, my_own_model=False):
             os.makedirs("output/" + dataset_info["tag"])
 
         scores_json = {'scores_group1': scores[ix_A].tolist(), 'scores_group2': scores[ix_B].tolist()}
-        json.dump(scores_json, open("output/" + dataset_info["tag"] + '/scores.json', 'w'))
+        json.dump(scores_json, open("output/" + dataset_info["tag"] + '/' + dataset_info["tag"] + '_scores.json', 'w'))
         y_json = {'y_group1': y[ix_A].tolist(), 'y_group2': y[ix_B].tolist()}
-        json.dump(y_json, open("output/" + dataset_info["tag"] + '/y.json', 'w'))
+        json.dump(y_json, open("output/" + dataset_info["tag"] + '/' + dataset_info["tag"] + '_y.json', 'w'))
 
         print("Scores and y are saved in json format to output/" + dataset_info["tag"])
 
