@@ -19,13 +19,3 @@ drive.mount("/content/gdrive")
 ```
 
 Now the repository has been saved to your Google Drive. Go to https://drive.google.com/, open the folder "AMLD-EPFL2022-workshop-fair-algorithms", and open the desired Jupyter Notebook: Open with > Google Colaboratory
-
-### Synchronize GitHub repository
-- Navigate to the desired folder
-```
-%cd AMLD-EPFL2022-workshop-fair-algorithms
-```
-- To synchronize the GitHub repository, run the following command on  Google Colab
-```
-! git pull
-```
