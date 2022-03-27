@@ -28,7 +28,7 @@ def preprocessing_german(df):
     
     # one hot encoding
     categorical_columns = ['status', 'credit_history', 'purpose', 'savings', 'employment', 'other_debtors', 'property', 'age', 'installment_plans', 'housing', 'skill_level', 'telephone', 'foreign_worker']
-    enc = OneHotEncoder(handle_unknown='ignore', drop='first')
+    enc = OneHotEncoder(drop='first')
     enc_df = pd.DataFrame(enc.fit_transform(df[categorical_columns]).toarray())
     df_one_hot_encoded = df.join(enc_df)
     df_one_hot_encoded = df_one_hot_encoded.drop(columns=categorical_columns)
@@ -81,7 +81,7 @@ def preprocessing_credit_lending(df):
 def preprocessing_algorithmic_hiring(df):
     # one hot encoding
     categorical_columns = ["workclass-previous-job", "education", "race","native-country"]
-    enc = OneHotEncoder(handle_unknown='ignore', drop='first')
+    enc = OneHotEncoder(drop='first')
     enc_df = pd.DataFrame(enc.fit_transform(df[categorical_columns]).toarray())
     df_one_hot_encoded = df.join(enc_df)
     df_one_hot_encoded = df_one_hot_encoded.drop(columns=categorical_columns)
