@@ -8,6 +8,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import OneHotEncoder
 import warnings
+import os
 
 
 
@@ -84,7 +85,7 @@ def preprocessing_algorithmic_hiring(df):
     enc_df = pd.DataFrame(enc.fit_transform(df[categorical_columns]).toarray())
     df_one_hot_encoded = df.join(enc_df)
     df_one_hot_encoded = df_one_hot_encoded.drop(columns=categorical_columns)
-    return df, df_one_hot_encoded
+    return df.drop(columns=["capital-gain", "capital-loss"]), df_one_hot_encoded
 
 
 # Datasets
@@ -120,7 +121,7 @@ algorithmic_hiring = {
 
 
 
-def train(dataset_info):
+def train(dataset_info, my_own_model=False):
 
     with warnings.catch_warnings():
         # ignore all caught warnings
@@ -197,10 +198,6 @@ def train(dataset_info):
         clf = LogisticRegression(max_iter=1000, random_state=0).fit(X_train, y_train)
         scores = clf.predict_proba(X_train)
 
-        #filename_model = 'model.sav'
-        #filename_scores = 'scores.sav'
-        #pickle.dump(clf, open(filename_model, 'wb'))
-        #pickle.dump(scores, open(filename_scores, 'wb'))
 
         print("The model has been trained.")
 
@@ -216,7 +213,11 @@ def train(dataset_info):
         ix_A = sensitive_attribute == 0
         ix_B = sensitive_attribute == 1
 
+        if my_own_model:
+            dataset_info["tag"] = dataset_info["tag"] + "_my_own_model"
 
+        if not os.path.exists("output/" + dataset_info["tag"]):
+            os.makedirs("output/" + dataset_info["tag"])
 
         scores_json = {'scores_group1': scores[ix_A].tolist(), 'scores_group2': scores[ix_B].tolist()}
         json.dump(scores_json, open("output/" + dataset_info["tag"] + '/scores.json', 'w'))
